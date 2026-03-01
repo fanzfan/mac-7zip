@@ -111,59 +111,50 @@ final class SevenZipWrapper {
         arguments: [String],
         progressHandler: ((String) -> Void)?
     ) async throws -> SevenZipResult {
-        return try await withCheckedThrowingContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async {
-                let process = Process()
-                process.executableURL = URL(fileURLWithPath: binary)
-                process.arguments = arguments
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: binary)
+        process.arguments = arguments
 
-                let stdoutPipe = Pipe()
-                let stderrPipe = Pipe()
-                process.standardOutput = stdoutPipe
-                process.standardError = stderrPipe
+        let stdoutPipe = Pipe()
+        let stderrPipe = Pipe()
+        process.standardOutput = stdoutPipe
+        process.standardError = stderrPipe
 
-                var stdoutData = Data()
-                var stderrData = Data()
+        var stdoutData = Data()
+        var stderrData = Data()
 
-                // Stream stdout for progress updates
-                stdoutPipe.fileHandleForReading.readabilityHandler = { handle in
-                    let data = handle.availableData
-                    if data.isEmpty { return }
-                    stdoutData.append(data)
-                    if let line = String(data: data, encoding: .utf8) {
-                        progressHandler?(line)
-                    }
-                }
-
-                stderrPipe.fileHandleForReading.readabilityHandler = { handle in
-                    let data = handle.availableData
-                    if !data.isEmpty {
-                        stderrData.append(data)
-                    }
-                }
-
-                do {
-                    try process.run()
-                    process.waitUntilExit()
-
-                    stdoutPipe.fileHandleForReading.readabilityHandler = nil
-                    stderrPipe.fileHandleForReading.readabilityHandler = nil
-
-                    let output = String(data: stdoutData, encoding: .utf8) ?? ""
-                    let errorOutput = String(data: stderrData, encoding: .utf8) ?? ""
-                    let exitCode = process.terminationStatus
-
-                    let result = SevenZipResult(
-                        success: exitCode == 0,
-                        output: output,
-                        errorOutput: errorOutput,
-                        exitCode: exitCode
-                    )
-                    continuation.resume(returning: result)
-                } catch {
-                    continuation.resume(throwing: error)
-                }
+        // Stream stdout for progress updates
+        stdoutPipe.fileHandleForReading.readabilityHandler = { handle in
+            let data = handle.availableData
+            if data.isEmpty { return }
+            stdoutData.append(data)
+            if let line = String(data: data, encoding: .utf8) {
+                progressHandler?(line)
             }
         }
+
+        stderrPipe.fileHandleForReading.readabilityHandler = { handle in
+            let data = handle.availableData
+            if !data.isEmpty {
+                stderrData.append(data)
+            }
+        }
+
+        try process.run()
+        process.waitUntilExit()
+
+        stdoutPipe.fileHandleForReading.readabilityHandler = nil
+        stderrPipe.fileHandleForReading.readabilityHandler = nil
+
+        let output = String(data: stdoutData, encoding: .utf8) ?? ""
+        let errorOutput = String(data: stderrData, encoding: .utf8) ?? ""
+        let exitCode = process.terminationStatus
+
+        return SevenZipResult(
+            success: exitCode == 0,
+            output: output,
+            errorOutput: errorOutput,
+            exitCode: exitCode
+        )
     }
 }

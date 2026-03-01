@@ -36,10 +36,8 @@ final class ArchiveViewModel: ObservableObject {
 
         Task {
             do {
-                let result = try await SevenZipWrapper.compress(inputPath: inputPath) { [weak self] line in
-                    Task { @MainActor in
-                        self?.progressText = line
-                    }
+                let result = try await SevenZipWrapper.compress(inputPath: inputPath) { @MainActor [weak self] line in
+                    self?.progressText = line
                 }
                 if result.success {
                     state = .success(message: "Compression complete.")
@@ -61,10 +59,8 @@ final class ArchiveViewModel: ObservableObject {
 
         Task {
             do {
-                let result = try await SevenZipWrapper.decompress(archivePath: archivePath) { [weak self] line in
-                    Task { @MainActor in
-                        self?.progressText = line
-                    }
+                let result = try await SevenZipWrapper.decompress(archivePath: archivePath) { @MainActor [weak self] line in
+                    self?.progressText = line
                 }
                 if result.success {
                     state = .success(message: "Extraction complete.")

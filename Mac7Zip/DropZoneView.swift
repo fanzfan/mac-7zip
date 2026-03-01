@@ -101,7 +101,9 @@ struct DropZoneView: View {
 
         for provider in providers {
             group.enter()
-            _ = provider.loadObject(ofClass: URL.self) { url, _ in
+            // The returned Progress object is intentionally discarded;
+            // progress tracking is handled by the SevenZipWrapper instead.
+            provider.loadObject(ofClass: URL.self) { url, _ in
                 if let url = url {
                     urls.append(url)
                 }
